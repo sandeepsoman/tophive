@@ -11,13 +11,14 @@ import Dashboard from "./pages/Dashboard";
 import BriefingForm from "./pages/BriefingForm";
 import BriefingResult from "./pages/BriefingResult";
 import NotFound from "./pages/NotFound";
-import { StrictMode } from "react";
 
 // Create a client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <StrictMode>
+const App = () => {
+  console.log('App component rendering');
+  
+  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -35,7 +36,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
-  </StrictMode>
-);
+  );
+};
 
 export default App;

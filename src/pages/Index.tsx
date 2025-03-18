@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Features from "@/components/Features";
-import { CheckCircle, ArrowRight, LucideIcon, Sparkles, Users, BarChart, FileText, Clock, Zap } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, Users, BarChart, FileText, Clock, Zap } from 'lucide-react';
 
 const Index = () => {
+  console.log('Index component rendering');
+
   // For animated sections
   const { ref: demoRef, inView: demoInView } = useInView({
     triggerOnce: true,
@@ -29,9 +31,22 @@ const Index = () => {
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  useEffect(() => {
+    console.log('Index component mounted');
+    document.title = 'SalesBriefGenius - AI-Powered Sales Briefings';
+  }, []);
   
   return (
     <div className="min-h-screen bg-background">
+      {/* Basic content to test rendering */}
+      <div className="p-10 text-center">
+        <h1 className="text-4xl font-bold mb-4">SalesBriefGenius</h1>
+        <p className="mb-6">If you can see this, the app is loading correctly.</p>
+        <Button>Click Me</Button>
+      </div>
+      
+      {/* Regular content */}
       <Header />
       <Hero />
       <Features />
