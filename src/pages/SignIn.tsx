@@ -1,36 +1,30 @@
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      console.error('Error during sign in:', error);
+    } finally {
       setIsLoading(false);
-      
-      // For demo purposes, any email/password combination works
-      toast({
-        title: "Signed in successfully",
-        description: "Welcome back to SalesBriefGenius!",
-      });
-      
-      navigate('/dashboard');
-    }, 1500);
+    }
   };
 
   return (
@@ -39,7 +33,7 @@ const SignIn = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center">
             <span className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">SB</span>
+              <span className="text-white font-bold">TH</span>
             </span>
           </Link>
           <h1 className="mt-4 text-2xl font-bold">Welcome back</h1>
