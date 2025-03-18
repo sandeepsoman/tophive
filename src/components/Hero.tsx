@@ -78,7 +78,7 @@ const Hero = () => {
           <div className="relative rounded-xl overflow-hidden shadow-2xl thin-ring">
             <img 
               src="/lovable-uploads/56495fc0-d074-44d7-abdb-9200cf265650.png" 
-              alt="SalesBriefGenius Dashboard" 
+              alt="TopHive Dashboard" 
               className="w-full"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>

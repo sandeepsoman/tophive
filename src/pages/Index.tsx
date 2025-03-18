@@ -5,7 +5,6 @@ import { useInView } from 'react-intersection-observer';
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import Features from "@/components/Features";
 import { CheckCircle, ArrowRight, Sparkles, Users, BarChart, FileText, Clock, Zap } from 'lucide-react';
 
 const Index = () => {
@@ -34,22 +33,14 @@ const Index = () => {
 
   useEffect(() => {
     console.log('Index component mounted');
-    document.title = 'SalesBriefGenius - AI-Powered Sales Briefings';
+    document.title = 'TopHive - AI-Powered Sales Briefings';
   }, []);
   
   return (
     <div className="min-h-screen bg-background">
-      {/* Basic content to test rendering */}
-      <div className="p-10 text-center">
-        <h1 className="text-4xl font-bold mb-4">SalesBriefGenius</h1>
-        <p className="mb-6">If you can see this, the app is loading correctly.</p>
-        <Button>Click Me</Button>
-      </div>
-      
       {/* Regular content */}
       <Header />
       <Hero />
-      <Features />
       
       {/* How It Works Section */}
       <section ref={demoRef} className="py-20">
@@ -110,7 +101,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <h2 className="text-3xl font-bold mb-6">
-                Why Sales Teams Love SalesBriefGenius
+                Why Sales Teams Love TopHive
               </h2>
               
               <div className="space-y-6">
@@ -164,7 +155,7 @@ const Index = () => {
                         <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       </div>
                       <div className="mx-auto text-xs text-muted-foreground">
-                        SalesBriefGenius
+                        TopHive
                       </div>
                     </div>
                     <div className="p-4">
@@ -239,7 +230,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                quote: "SalesBriefGenius has become my secret weapon. I save hours on research before each call and walk in with insights my competitors don't have.",
+                quote: "TopHive has become my secret weapon. I save hours on research before each call and walk in with insights my competitors don't have.",
                 author: "Sarah J.",
                 role: "Account Executive",
                 company: "Enterprise Tech",
@@ -433,9 +424,9 @@ const Index = () => {
             <div>
               <div className="flex items-center mb-4">
                 <span className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mr-2">
-                  <span className="text-white font-bold">SB</span>
+                  <span className="text-white font-bold">TH</span>
                 </span>
-                <span className="font-semibold">SalesBriefGenius</span>
+                <span className="font-semibold">TopHive</span>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 AI-powered sales briefings that give you the edge in every meeting.
@@ -473,7 +464,7 @@ const Index = () => {
           
           <div className="border-t mt-12 pt-6 flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-muted-foreground mb-4 md:mb-0">
-              &copy; {new Date().getFullYear()} SalesBriefGenius. All rights reserved.
+              &copy; {new Date().getFullYear()} TopHive. All rights reserved.
             </p>
             <div className="flex space-x-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

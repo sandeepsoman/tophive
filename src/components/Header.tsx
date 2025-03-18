@@ -35,9 +35,9 @@ const Header = () => {
       <div className="container px-6 lg:px-8 mx-auto flex justify-between items-center">
         <Link to="/" className="flex items-center space-x-2">
           <span className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">SB</span>
+            <span className="text-white font-bold">TH</span>
           </span>
-          <span className="font-semibold text-lg">SalesBriefGenius</span>
+          <span className="font-semibold text-lg">TopHive</span>
         </Link>
         
         <nav className="hidden md:flex items-center space-x-8">
