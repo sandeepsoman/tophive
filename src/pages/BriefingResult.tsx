@@ -72,8 +72,17 @@ const BriefingResult = () => {
     setIsSaving(true);
     
     try {
-      // For now, updating in-memory only
-      // In a production app, you would save to Supabase here
+      // Update notes in Supabase
+      if (user && id) {
+        const { error } = await supabase
+          .from('briefings')
+          .update({ notes })
+          .eq('id', id);
+          
+        if (error) throw error;
+      }
+      
+      // Update locally
       const updatedBriefing = { ...briefing, notes };
       setBriefing(updatedBriefing);
       
