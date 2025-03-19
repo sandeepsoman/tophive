@@ -10,7 +10,7 @@ import Index from "./pages/Index";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
-import BriefingForm from "./pages/BriefingForm";
+import BriefingForm from "./pages/briefing";
 import BriefingResult from "./pages/BriefingResult";
 import NotFound from "./pages/NotFound";
 
