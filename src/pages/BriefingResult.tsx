@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import LoadingEffect from '@/components/LoadingEffect';
 import { BriefingService, Briefing } from '@/utils/briefingService';
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Download, Share2, ThumbsUp, ThumbsDown, Printer, Calendar, Mail, BarChart4, FileText } from 'lucide-react';
 
 const BriefingResult = () => {
@@ -17,8 +20,10 @@ const BriefingResult = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadBriefing = async () => {
@@ -61,11 +66,31 @@ const BriefingResult = () => {
     window.print();
   };
 
-  const handleSaveNotes = () => {
-    toast({
-      title: "Notes saved",
-      description: "Your notes have been saved successfully.",
-    });
+  const handleSaveNotes = async () => {
+    if (!briefing) return;
+    
+    setIsSaving(true);
+    
+    try {
+      // For now, updating in-memory only
+      // In a production app, you would save to Supabase here
+      const updatedBriefing = { ...briefing, notes };
+      setBriefing(updatedBriefing);
+      
+      toast({
+        title: "Notes saved",
+        description: "Your notes have been saved successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      toast({
+        title: "Error saving notes",
+        description: "There was a problem saving your notes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFeedback = (type: 'like' | 'dislike') => {
@@ -133,7 +158,7 @@ const BriefingResult = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleFeedback.bind(null, 'like')}
+                  onClick={() => handleFeedback('like')}
                   className={feedback === 'like' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-800' : ''}
                 >
                   <ThumbsUp size={14} className="mr-1" />
@@ -142,7 +167,7 @@ const BriefingResult = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleFeedback.bind(null, 'dislike')}
+                  onClick={() => handleFeedback('dislike')}
                   className={feedback === 'dislike' ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900 dark:text-red-300 dark:border-red-800' : ''}
                 >
                   <ThumbsDown size={14} className="mr-1" />
@@ -170,7 +195,9 @@ const BriefingResult = () => {
 
       <main className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Key Takeaways */}
             <Card className="bg-background overflow-hidden print:shadow-none">
               <div className="bg-primary/10 px-6 py-3 border-b">
                 <h2 className="font-medium text-primary">Key Takeaways</h2>
@@ -189,6 +216,7 @@ const BriefingResult = () => {
               </CardContent>
             </Card>
 
+            {/* Company Overview */}
             <Card className="bg-background overflow-hidden print:shadow-none">
               <Tabs defaultValue="overview">
                 <div className="bg-secondary/50 border-b px-6 py-2">
@@ -224,10 +252,284 @@ const BriefingResult = () => {
                   {briefing.company.website && (
                     <p className="text-sm">
                       <span className="text-muted-foreground">Website:</span>{" "}
+                      <a 
+                        href={briefing.company.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {briefing.company.website}
+                      </a>
                     </p>
                   )}
                 </TabsContent>
+                
+                <TabsContent value="recent-news" className="p-6 mt-0">
+                  <div className="space-y-6">
+                    {briefing.companyOverview.recentNews.map((news, index) => (
+                      <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium">{news.title}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {news.date}
+                          </Badge>
+                        </div>
+                        <p className="text-sm mb-2">{news.summary}</p>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <span>Source: {news.source}</span>
+                          {news.url && (
+                            <a 
+                              href={news.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="ml-2 text-primary hover:underline"
+                            >
+                              Read more
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="financial" className="p-6 mt-0">
+                  <div className="mb-4">
+                    <Badge className="mb-2" variant={
+                      briefing.companyOverview.financialHealth.status.toLowerCase().includes('strong') ? 'default' :
+                      briefing.companyOverview.financialHealth.status.toLowerCase().includes('stable') ? 'secondary' :
+                      'outline'
+                    }>
+                      {briefing.companyOverview.financialHealth.status}
+                    </Badge>
+                    <p>{briefing.companyOverview.financialHealth.details}</p>
+                  </div>
+                  {briefing.companyOverview.financialHealth.metrics && (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      {Object.entries(briefing.companyOverview.financialHealth.metrics).map(([key, value]) => (
+                        <div key={key} className="bg-secondary/30 p-3 rounded-md">
+                          <div className="text-xs text-muted-foreground">{key}</div>
+                          <div className="font-medium">{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
+            </Card>
+            
+            {/* Key Contacts */}
+            <Card className="bg-background overflow-hidden print:shadow-none">
+              <div className="bg-primary/10 px-6 py-3 border-b">
+                <h2 className="font-medium text-primary">Key Contacts</h2>
+              </div>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {briefing.keyContacts.map((contact) => (
+                    <div key={contact.id} className="flex items-start space-x-3 border p-3 rounded-md">
+                      {contact.photo ? (
+                        <img 
+                          src={contact.photo} 
+                          alt={contact.name} 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-medium">
+                          {contact.name.charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-medium">{contact.name}</h4>
+                        <p className="text-sm text-muted-foreground">{contact.title}</p>
+                        {contact.linkedin && (
+                          <a 
+                            href={contact.linkedin} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline mt-1 inline-block"
+                          >
+                            LinkedIn Profile
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {briefing.keyContacts.length > 0 && briefing.keyContacts[0].recentActivity && (
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium mb-2">Recent Activity</h3>
+                    <div className="border rounded-md p-4">
+                      <ul className="space-y-2">
+                        {briefing.keyContacts[0].recentActivity.map((activity, index) => (
+                          <li key={index} className="text-sm">
+                            • {activity}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Insights */}
+            {briefing.insights && briefing.insights.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Business Insights</h2>
+                </div>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    {briefing.insights.map((insight, index) => (
+                      <div key={index} className={index > 0 ? "pt-4 border-t" : ""}>
+                        <h3 className="font-medium mb-1">{insight.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
+                        <ul className="space-y-2">
+                          {insight.items.map((item, itemIndex) => (
+                            <li key={itemIndex} className="flex items-start">
+                              <span className="inline-flex items-center justify-center bg-secondary text-primary rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
+                                •
+                              </span>
+                              <span className="text-sm">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sales Hypotheses */}
+            {briefing.salesHypotheses && briefing.salesHypotheses.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Sales Hypotheses</h2>
+                </div>
+                <CardContent className="p-6">
+                  <ul className="space-y-3">
+                    {briefing.salesHypotheses.map((hypothesis, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="inline-flex items-center justify-center bg-primary/10 text-primary rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <span>{hypothesis}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Competitor Analysis */}
+            {briefing.competitorAnalysis && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Competitor Analysis</h2>
+                </div>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Key Competitors</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-muted/50">
+                              <th className="text-left p-2 border">Competitor</th>
+                              <th className="text-left p-2 border">Strengths</th>
+                              <th className="text-left p-2 border">Weaknesses</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {briefing.competitorAnalysis.competitors.map((competitor, index) => (
+                              <tr key={index} className="border-b">
+                                <td className="p-2 border">{competitor.name}</td>
+                                <td className="p-2 border">{competitor.strength}</td>
+                                <td className="p-2 border">{competitor.weakness}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Competitive Position</h3>
+                      <p>{briefing.competitorAnalysis.comparison}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Talking Points */}
+            {briefing.talkingPoints && briefing.talkingPoints.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Suggested Talking Points</h2>
+                </div>
+                <CardContent className="p-6">
+                  <ul className="space-y-3">
+                    {briefing.talkingPoints.map((point, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
+                          Q
+                        </span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          
+          {/* Sidebar */}
+          <div className="space-y-6 print:hidden">
+            {/* Action Buttons */}
+            <Card className="bg-background">
+              <CardContent className="p-4 space-y-2">
+                <Button className="w-full justify-start" variant="outline">
+                  <Calendar size={16} className="mr-2" />
+                  Schedule Meeting
+                </Button>
+                <Button className="w-full justify-start" variant="outline">
+                  <Mail size={16} className="mr-2" />
+                  Email Briefing
+                </Button>
+                <Button className="w-full justify-start" variant="outline">
+                  <BarChart4 size={16} className="mr-2" />
+                  Create Presentation
+                </Button>
+                <Button className="w-full justify-start" variant="outline">
+                  <FileText size={16} className="mr-2" />
+                  Export as Word Doc
+                </Button>
+              </CardContent>
+            </Card>
+            
+            {/* Notes */}
+            <Card className="bg-background">
+              <div className="px-4 py-3 border-b">
+                <h3 className="font-medium">Meeting Notes</h3>
+              </div>
+              <CardContent className="p-4">
+                <Textarea 
+                  placeholder="Add your personal notes here..." 
+                  className="min-h-[200px] mb-4"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+                <Button 
+                  onClick={handleSaveNotes} 
+                  className="w-full"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Notes"}
+                </Button>
+              </CardContent>
             </Card>
           </div>
         </div>

@@ -9,7 +9,101 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      briefing_requests: {
+        Row: {
+          company_id: string
+          company_logo: string | null
+          company_name: string
+          contact_id: string | null
+          created_at: string
+          focus_areas: string[] | null
+          id: string
+          meeting_type: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          company_logo?: string | null
+          company_name: string
+          contact_id?: string | null
+          created_at?: string
+          focus_areas?: string[] | null
+          id?: string
+          meeting_type: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          company_logo?: string | null
+          company_name?: string
+          contact_id?: string | null
+          created_at?: string
+          focus_areas?: string[] | null
+          id?: string
+          meeting_type?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      briefings: {
+        Row: {
+          company_overview: Json
+          competitor_analysis: Json | null
+          created_at: string
+          id: string
+          insights: Json | null
+          key_contacts: Json | null
+          notes: string | null
+          request_id: string
+          sales_hypotheses: string[] | null
+          status: string
+          summary: string[] | null
+          talking_points: string[] | null
+          title: string
+        }
+        Insert: {
+          company_overview: Json
+          competitor_analysis?: Json | null
+          created_at?: string
+          id?: string
+          insights?: Json | null
+          key_contacts?: Json | null
+          notes?: string | null
+          request_id: string
+          sales_hypotheses?: string[] | null
+          status?: string
+          summary?: string[] | null
+          talking_points?: string[] | null
+          title: string
+        }
+        Update: {
+          company_overview?: Json
+          competitor_analysis?: Json | null
+          created_at?: string
+          id?: string
+          insights?: Json | null
+          key_contacts?: Json | null
+          notes?: string | null
+          request_id?: string
+          sales_hypotheses?: string[] | null
+          status?: string
+          summary?: string[] | null
+          talking_points?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "briefings_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "briefing_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

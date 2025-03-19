@@ -11,7 +11,8 @@ import CompanyLookup, { Company } from "@/components/CompanyLookup";
 import LoadingEffect from '@/components/LoadingEffect';
 import { BriefingService } from '@/utils/briefingService';
 import { ArrowLeft, Sparkles } from 'lucide-react';
-import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from "@/integrations/supabase/client";
 
 // Define the interface for Contact to avoid naming conflicts
 interface ContactPerson {
@@ -23,6 +24,7 @@ interface ContactPerson {
 const BriefingForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [meetingType, setMeetingType] = useState<'Intro Call' | 'Renewal' | 'Competitive Deal'>('Intro Call');
@@ -63,7 +65,7 @@ const BriefingForm = () => {
   };
 
   const handleGenerate = async () => {
-    if (!selectedCompany || !selectedCompany.id) {
+    if (!selectedCompany || !selectedCompany.id || !user) {
       toast({
         title: "Company required",
         description: "Please select a company to generate a briefing.",
@@ -83,16 +85,55 @@ const BriefingForm = () => {
     }, 800);
     
     try {
+      // Save briefing request to Supabase
+      const { data: requestData, error: requestError } = await supabase
+        .from('briefing_requests')
+        .insert({
+          user_id: user.id,
+          company_id: selectedCompany.id,
+          company_name: selectedCompany.name,
+          company_logo: selectedCompany.logo,
+          meeting_type: meetingType,
+          contact_id: selectedContact,
+          focus_areas: focusAreas.length > 0 ? focusAreas : null,
+          status: 'generating'
+        })
+        .select('id')
+        .single();
+        
+      if (requestError) throw requestError;
+      
+      // For now, still using mock service to generate the briefing
       const selectedContactObj = selectedContact ? 
         contacts.find(c => c.id === selectedContact) as unknown as any : 
         undefined;
 
-      await BriefingService.generateBriefing(
+      const briefing = await BriefingService.generateBriefing(
         selectedCompany,
         meetingType,
         selectedContactObj,
         focusAreas.length > 0 ? focusAreas : undefined
       );
+      
+      // Save the generated briefing to Supabase
+      if (requestData?.id) {
+        const { error: briefingError } = await supabase
+          .from('briefings')
+          .insert({
+            request_id: requestData.id,
+            title: briefing.title,
+            summary: briefing.summary,
+            company_overview: briefing.companyOverview,
+            key_contacts: briefing.keyContacts,
+            insights: briefing.insights,
+            sales_hypotheses: briefing.salesHypotheses,
+            competitor_analysis: briefing.competitorAnalysis,
+            talking_points: briefing.talkingPoints,
+            status: 'completed'
+          });
+          
+        if (briefingError) throw briefingError;
+      }
       
       clearInterval(progressInterval);
       setGenerationProgress(100);
@@ -104,7 +145,7 @@ const BriefingForm = () => {
       
       // Wait a moment before redirecting to show 100% progress
       setTimeout(() => {
-        navigate('/briefing/1');
+        navigate('/briefing/1'); // In a real app, this would be the actual briefing ID
       }, 500);
       
     } catch (error) {
@@ -184,7 +225,7 @@ const BriefingForm = () => {
                   </div>
                   
                   {formStep === 'details' && selectedCompany && selectedCompany.id && (
-                    <div className="space-y-6 animate-fade-in">
+                    <div className="space-y-6 animate-in fade-in duration-300">
                       <div className="space-y-3">
                         <Label className="text-base">
                           Meeting Type <span className="text-destructive">*</span>
