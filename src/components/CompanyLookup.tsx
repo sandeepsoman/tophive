@@ -5,57 +5,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import ClearbitService from '@/services/clearbitService';
 
-interface Company {
+export interface Company {
   id: string;
   name: string;
   logo?: string;
   industry?: string;
   location?: string;
+  domain?: string;
 }
 
 interface CompanyLookupProps {
   onSelect: (company: Company) => void;
   selectedCompany: Company | null;
 }
-
-const mockCompanies: Company[] = [
-  { 
-    id: '1', 
-    name: 'Snowflake', 
-    logo: 'https://logo.clearbit.com/snowflake.com', 
-    industry: 'Cloud Data Platform',
-    location: 'Bozeman, MT'
-  },
-  { 
-    id: '2', 
-    name: 'Salesforce', 
-    logo: 'https://logo.clearbit.com/salesforce.com', 
-    industry: 'CRM Software',
-    location: 'San Francisco, CA'
-  },
-  { 
-    id: '3', 
-    name: 'Microsoft', 
-    logo: 'https://logo.clearbit.com/microsoft.com', 
-    industry: 'Technology',
-    location: 'Redmond, WA'
-  },
-  { 
-    id: '4', 
-    name: 'Adobe', 
-    logo: 'https://logo.clearbit.com/adobe.com', 
-    industry: 'Software',
-    location: 'San Jose, CA'
-  },
-  { 
-    id: '5', 
-    name: 'Slack', 
-    logo: 'https://logo.clearbit.com/slack.com', 
-    industry: 'Communication',
-    location: 'San Francisco, CA'
-  }
-];
 
 const CompanyLookup = ({ onSelect, selectedCompany }: CompanyLookupProps) => {
   const [query, setQuery] = useState('');
@@ -84,22 +48,23 @@ const CompanyLookup = ({ onSelect, selectedCompany }: CompanyLookupProps) => {
   }, []);
 
   useEffect(() => {
-    if (!query) {
+    if (!query.trim()) {
       setResults([]);
       return;
     }
 
-    const searchCompanies = () => {
+    const searchCompanies = async () => {
       setIsLoading(true);
       
-      // Simulate API call with setTimeout
-      setTimeout(() => {
-        const filtered = mockCompanies.filter(company => 
-          company.name.toLowerCase().includes(query.toLowerCase())
-        );
-        setResults(filtered);
+      try {
+        // Use the ClearbitService to search for companies
+        const companies = await ClearbitService.searchCompanies(query);
+        setResults(companies);
+      } catch (error) {
+        console.error('Error searching companies:', error);
+      } finally {
         setIsLoading(false);
-      }, 500);
+      }
     };
 
     // Debounce search
@@ -138,6 +103,7 @@ const CompanyLookup = ({ onSelect, selectedCompany }: CompanyLookupProps) => {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
               className="pl-10 focus-within-ring transition-all"
+              autoComplete="off"
             />
           </div>
           

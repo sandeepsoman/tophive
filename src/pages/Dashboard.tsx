@@ -1,10 +1,7 @@
 
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import Header from '@/components/Header';
-import BriefingCard from '@/components/BriefingCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -21,10 +18,9 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-background pt-16">
       <main className="container max-w-7xl mx-auto p-4 md:p-6">
-        <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground mt-1">
