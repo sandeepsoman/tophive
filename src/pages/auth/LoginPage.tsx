@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -15,30 +14,14 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { signIn } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) throw error;
-      
-      if (data.user) {
-        setUser(data.user);
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome back!",
-        });
-        
-        navigate('/dashboard');
-      }
+      await signIn(email, password);
     } catch (error: any) {
       console.error('Login error:', error);
       toast({

@@ -89,12 +89,12 @@ const BriefingResult = () => {
           if (!companyOverview.description) companyOverview.description = '';
           if (!companyOverview.recentNews) companyOverview.recentNews = [];
           if (!companyOverview.financialHealth) {
-            companyOverview.financialHealth = { status: '', details: '' };
+            companyOverview.financialHealth = { status: '', details: '', metrics: undefined };
           }
           
           const defaultKeyContacts: Contact[] = [];
           const keyContacts = Array.isArray(data.key_contacts) 
-            ? data.key_contacts.map((contact: Json) => {
+            ? data.key_contacts.map((contact: any) => {
                 if (typeof contact === 'object' && contact !== null) {
                   return {
                     id: String(contact.id || ''),
@@ -104,28 +104,28 @@ const BriefingResult = () => {
                     photo: contact.photo as string | undefined,
                     linkedin: contact.linkedin as string | undefined,
                     recentActivity: Array.isArray(contact.recentActivity) 
-                      ? contact.recentActivity.map(item => String(item))
+                      ? contact.recentActivity.map((item: any) => String(item))
                       : undefined
-                  };
+                  } as Contact;
                 }
                 return null;
               }).filter((c): c is Contact => c !== null)
             : defaultKeyContacts;
             
-          const defaultInsights = [];
+          const defaultInsights: { title: string; description: string; items: string[] }[] = [];
           const insights = Array.isArray(data.insights)
-            ? data.insights.map((insight: Json) => {
+            ? data.insights.map((insight: any) => {
                 if (typeof insight === 'object' && insight !== null) {
                   return {
                     title: String(insight.title || ''),
                     description: String(insight.description || ''),
                     items: Array.isArray(insight.items) 
-                      ? insight.items.map(item => String(item)) 
+                      ? insight.items.map((item: any) => String(item)) 
                       : []
                   };
                 }
                 return null;
-              }).filter((i) => i !== null)
+              }).filter((i): i is { title: string; description: string; items: string[] } => i !== null)
             : defaultInsights;
           
           let competitorAnalysis;
