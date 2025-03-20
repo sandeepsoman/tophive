@@ -30,9 +30,55 @@ const BriefingResult = () => {
       if (!id) return;
       
       try {
-        const data = await BriefingService.getBriefingById(id);
-        setBriefing(data);
-        setNotes(data.notes || '');
+        setIsLoading(true);
+        
+        // Try to load from Supabase first
+        const { data, error } = await supabase
+          .from('briefings')
+          .select('*, briefing_requests(*)')
+          .eq('id', id)
+          .maybeSingle();
+          
+        if (error) throw error;
+        
+        if (data) {
+          console.log('Loaded briefing from Supabase:', data);
+          
+          // Map the Supabase briefing data to our Briefing interface
+          const mappedBriefing: Briefing = {
+            id: data.id,
+            title: data.title,
+            company: {
+              id: data.briefing_requests?.company_id || '',
+              name: data.briefing_requests?.company_name || '',
+              logo: data.briefing_requests?.company_logo || undefined,
+            },
+            meetingType: data.briefing_requests?.meeting_type as any,
+            summary: data.summary || [],
+            companyOverview: data.company_overview || { 
+              description: '', 
+              recentNews: [],
+              financialHealth: { status: '', details: '' }
+            },
+            keyContacts: data.key_contacts || [],
+            insights: data.insights || [],
+            salesHypotheses: data.sales_hypotheses || [],
+            competitorAnalysis: data.competitor_analysis || undefined,
+            talkingPoints: data.talking_points || [],
+            createdAt: new Date(data.created_at),
+            status: data.status as any,
+            notes: data.notes || '',
+          };
+          
+          setBriefing(mappedBriefing);
+          setNotes(data.notes || '');
+        } else {
+          // Fallback to mock service if not found in Supabase
+          console.log('Briefing not found in Supabase, using mock service');
+          const mockData = await BriefingService.getBriefingById(id);
+          setBriefing(mockData);
+          setNotes(mockData.notes || '');
+        }
       } catch (error) {
         console.error('Error loading briefing:', error);
         toast({

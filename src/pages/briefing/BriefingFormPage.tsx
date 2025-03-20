@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import LoadingEffect from '@/components/LoadingEffect';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +102,7 @@ const BriefingFormPage = () => {
       );
       
       // Save the generated briefing to Supabase
+      let briefingId = null;
       if (requestData?.id) {
         // Convert contacts to a compatible JSON format
         const keyContactsJson = briefing.keyContacts.map(contact => ({
@@ -114,7 +114,7 @@ const BriefingFormPage = () => {
           recentActivity: contact.recentActivity || null
         }));
 
-        const { error: briefingError } = await supabase
+        const { data: briefingData, error: briefingError } = await supabase
           .from('briefings')
           .insert({
             request_id: requestData.id,
@@ -127,9 +127,13 @@ const BriefingFormPage = () => {
             competitor_analysis: briefing.competitorAnalysis,
             talking_points: briefing.talkingPoints,
             status: 'completed'
-          });
+          })
+          .select('id')
+          .single();
           
         if (briefingError) throw briefingError;
+        
+        briefingId = briefingData?.id;
       }
       
       clearInterval(progressInterval);
@@ -142,7 +146,11 @@ const BriefingFormPage = () => {
       
       // Wait a moment before redirecting to show 100% progress
       setTimeout(() => {
-        navigate('/dashboard');
+        if (briefingId) {
+          navigate(`/briefing/${briefingId}`);
+        } else {
+          navigate('/dashboard');
+        }
       }, 500);
       
     } catch (error) {

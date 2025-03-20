@@ -1,67 +1,73 @@
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import LoginPage from '@/pages/auth/LoginPage';
+import SignupPage from '@/pages/auth/SignupPage';
+import Dashboard from '@/pages/Dashboard';
+import BriefingFormPage from '@/pages/briefing';
+import BriefingResult from '@/pages/BriefingResult';
+import LoadingEffect from '@/components/LoadingEffect';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Index from "./pages/Index";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
-import Dashboard from "./pages/Dashboard";
-import BriefingForm from "./pages/briefing";
-import BriefingResult from "./pages/BriefingResult";
-import NotFound from "./pages/NotFound";
-
-// Create a client
-const queryClient = new QueryClient();
-
-const App = () => {
-  console.log('App component rendering');
+// Protected route component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
   
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/signin" element={<SignIn />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/new-briefing" 
-                element={
-                  <ProtectedRoute>
-                    <BriefingForm />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/briefing/:id" 
-                element={
-                  <ProtectedRoute>
-                    <BriefingResult />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <LoadingEffect text="Loading..." />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
 };
+
+function App() {
+  return (
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/briefing/new" 
+              element={
+                <ProtectedRoute>
+                  <BriefingFormPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/briefing/:id" 
+              element={
+                <ProtectedRoute>
+                  <BriefingResult />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
 
 export default App;
