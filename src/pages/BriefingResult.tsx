@@ -8,15 +8,34 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import LoadingEffect from '@/components/LoadingEffect';
-import { BriefingService, Briefing } from '@/utils/briefingService';
+import { BriefingService, Briefing, Contact } from '@/utils/briefingService';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Download, Share2, ThumbsUp, ThumbsDown, Printer, Calendar, Mail, BarChart4, FileText } from 'lucide-react';
+import type { Json } from '@/integrations/supabase/types';
+
+function safeParseJson<T>(data: unknown, fallback: T): T {
+  if (data === null || data === undefined) {
+    return fallback;
+  }
+  
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data) as T;
+    } catch (e) {
+      console.error('Error parsing JSON:', e);
+      return fallback;
+    }
+  }
+  
+  return data as T;
+}
 
 const BriefingResult = () => {
   const { id } = useParams<{ id: string }>();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -26,40 +45,101 @@ const BriefingResult = () => {
 
   useEffect(() => {
     const loadBriefing = async () => {
-      if (!id) return;
+      if (!id) {
+        setError("No briefing ID provided");
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Try to load from Supabase first
         const { data, error } = await supabase
           .from('briefings')
           .select('*, briefing_requests(*)')
           .eq('id', id)
           .maybeSingle();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
         
         if (data) {
           console.log('Loaded briefing from Supabase:', data);
           
-          // Convert string arrays to actual arrays if needed
           const parsedSummary = Array.isArray(data.summary) ? data.summary : [];
           const parsedTalkingPoints = Array.isArray(data.talking_points) ? data.talking_points : [];
           const parsedSalesHypotheses = Array.isArray(data.sales_hypotheses) ? data.sales_hypotheses : [];
           
-          // Parse JSON fields with type checking
-          const companyOverview = typeof data.company_overview === 'object' ? data.company_overview : {
+          const defaultCompanyOverview = {
             description: '', 
             recentNews: [],
-            financialHealth: { status: '', details: '' }
+            financialHealth: { 
+              status: '', 
+              details: '',
+              metrics: undefined
+            }
           };
           
-          const keyContacts = Array.isArray(data.key_contacts) ? data.key_contacts : [];
-          const insights = Array.isArray(data.insights) ? data.insights : [];
-          const competitorAnalysis = typeof data.competitor_analysis === 'object' ? data.competitor_analysis : undefined;
+          const companyOverview = safeParseJson(data.company_overview, defaultCompanyOverview);
           
-          // Map the Supabase briefing data to our Briefing interface
+          if (!companyOverview.description) companyOverview.description = '';
+          if (!companyOverview.recentNews) companyOverview.recentNews = [];
+          if (!companyOverview.financialHealth) {
+            companyOverview.financialHealth = { status: '', details: '' };
+          }
+          
+          const defaultKeyContacts: Contact[] = [];
+          const keyContacts = Array.isArray(data.key_contacts) 
+            ? data.key_contacts.map((contact: Json) => {
+                if (typeof contact === 'object' && contact !== null) {
+                  return {
+                    id: String(contact.id || ''),
+                    name: String(contact.name || ''),
+                    title: String(contact.title || ''),
+                    company: String(contact.company || ''),
+                    photo: contact.photo as string | undefined,
+                    linkedin: contact.linkedin as string | undefined,
+                    recentActivity: Array.isArray(contact.recentActivity) 
+                      ? contact.recentActivity.map(item => String(item))
+                      : undefined
+                  };
+                }
+                return null;
+              }).filter((c): c is Contact => c !== null)
+            : defaultKeyContacts;
+            
+          const defaultInsights = [];
+          const insights = Array.isArray(data.insights)
+            ? data.insights.map((insight: Json) => {
+                if (typeof insight === 'object' && insight !== null) {
+                  return {
+                    title: String(insight.title || ''),
+                    description: String(insight.description || ''),
+                    items: Array.isArray(insight.items) 
+                      ? insight.items.map(item => String(item)) 
+                      : []
+                  };
+                }
+                return null;
+              }).filter((i) => i !== null)
+            : defaultInsights;
+          
+          let competitorAnalysis;
+          if (data.competitor_analysis) {
+            const defaultCompetitorAnalysis = {
+              competitors: [],
+              comparison: ''
+            };
+            
+            competitorAnalysis = safeParseJson(data.competitor_analysis, defaultCompetitorAnalysis);
+            
+            if (!competitorAnalysis.competitors) competitorAnalysis.competitors = [];
+            if (!competitorAnalysis.comparison) competitorAnalysis.comparison = '';
+          }
+          
           const mappedBriefing: Briefing = {
             id: data.id,
             title: data.title,
@@ -67,8 +147,10 @@ const BriefingResult = () => {
               id: data.briefing_requests?.company_id || '',
               name: data.briefing_requests?.company_name || '',
               logo: data.briefing_requests?.company_logo || undefined,
+              industry: 'Technology',
+              location: 'Unknown'
             },
-            meetingType: data.briefing_requests?.meeting_type as any,
+            meetingType: (data.briefing_requests?.meeting_type as any) || 'Intro Call',
             summary: parsedSummary,
             companyOverview: companyOverview,
             keyContacts: keyContacts,
@@ -77,21 +159,26 @@ const BriefingResult = () => {
             competitorAnalysis: competitorAnalysis,
             talkingPoints: parsedTalkingPoints,
             createdAt: new Date(data.created_at),
-            status: data.status as any,
+            status: (data.status as any) || 'completed',
             notes: data.notes || '',
           };
           
           setBriefing(mappedBriefing);
           setNotes(data.notes || '');
         } else {
-          // Fallback to mock service if not found in Supabase
           console.log('Briefing not found in Supabase, using mock service');
-          const mockData = await BriefingService.getBriefingById(id);
-          setBriefing(mockData);
-          setNotes(mockData.notes || '');
+          try {
+            const mockData = await BriefingService.getBriefingById(id);
+            setBriefing(mockData);
+            setNotes(mockData.notes || '');
+          } catch (mockError) {
+            console.error('Error with mock briefing:', mockError);
+            throw new Error('Briefing not found in database or mock service');
+          }
         }
       } catch (error) {
         console.error('Error loading briefing:', error);
+        setError('The requested briefing could not be found.');
         toast({
           title: "Error loading briefing",
           description: "The requested briefing could not be found.",
@@ -129,7 +216,6 @@ const BriefingResult = () => {
     setIsSaving(true);
     
     try {
-      // Update notes in Supabase
       if (user && id) {
         const { error } = await supabase
           .from('briefings')
@@ -139,7 +225,6 @@ const BriefingResult = () => {
         if (error) throw error;
       }
       
-      // Update locally
       const updatedBriefing = { ...briefing, notes };
       setBriefing(updatedBriefing);
       
@@ -175,12 +260,12 @@ const BriefingResult = () => {
     );
   }
 
-  if (!briefing) {
+  if (error || !briefing) {
     return (
       <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Briefing Not Found</h1>
-          <p className="text-muted-foreground mb-6">The requested briefing could not be found.</p>
+          <p className="text-muted-foreground mb-6">{error || "The requested briefing could not be found."}</p>
           <Button onClick={() => navigate('/dashboard')}>
             Return to Dashboard
           </Button>
@@ -261,9 +346,7 @@ const BriefingResult = () => {
 
       <main className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Key Takeaways */}
             <Card className="bg-background overflow-hidden print:shadow-none">
               <div className="bg-primary/10 px-6 py-3 border-b">
                 <h2 className="font-medium text-primary">Key Takeaways</h2>
@@ -282,7 +365,6 @@ const BriefingResult = () => {
               </CardContent>
             </Card>
 
-            {/* Company Overview */}
             <Card className="bg-background overflow-hidden print:shadow-none">
               <Tabs defaultValue="overview">
                 <div className="bg-secondary/50 border-b px-6 py-2">
@@ -332,45 +414,49 @@ const BriefingResult = () => {
                 
                 <TabsContent value="recent-news" className="p-6 mt-0">
                   <div className="space-y-6">
-                    {briefing.companyOverview.recentNews.map((news, index) => (
-                      <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium">{news.title}</h4>
-                          <Badge variant="outline" className="text-xs">
-                            {news.date}
-                          </Badge>
+                    {briefing.companyOverview.recentNews && briefing.companyOverview.recentNews.length > 0 ? (
+                      briefing.companyOverview.recentNews.map((news, index) => (
+                        <div key={index} className="border-b pb-4 last:border-0 last:pb-0">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-medium">{news.title}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {news.date}
+                            </Badge>
+                          </div>
+                          <p className="text-sm mb-2">{news.summary}</p>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <span>Source: {news.source}</span>
+                            {news.url && (
+                              <a 
+                                href={news.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="ml-2 text-primary hover:underline"
+                              >
+                                Read more
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm mb-2">{news.summary}</p>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <span>Source: {news.source}</span>
-                          {news.url && (
-                            <a 
-                              href={news.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="ml-2 text-primary hover:underline"
-                            >
-                              Read more
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No recent news available.</p>
+                    )}
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="financial" className="p-6 mt-0">
                   <div className="mb-4">
                     <Badge className="mb-2" variant={
-                      briefing.companyOverview.financialHealth.status.toLowerCase().includes('strong') ? 'default' :
-                      briefing.companyOverview.financialHealth.status.toLowerCase().includes('stable') ? 'secondary' :
+                      briefing.companyOverview.financialHealth?.status?.toLowerCase().includes('strong') ? 'default' :
+                      briefing.companyOverview.financialHealth?.status?.toLowerCase().includes('stable') ? 'secondary' :
                       'outline'
                     }>
-                      {briefing.companyOverview.financialHealth.status}
+                      {briefing.companyOverview.financialHealth?.status || 'No status available'}
                     </Badge>
-                    <p>{briefing.companyOverview.financialHealth.details}</p>
+                    <p>{briefing.companyOverview.financialHealth?.details || 'No financial details available'}</p>
                   </div>
-                  {briefing.companyOverview.financialHealth.metrics && (
+                  {briefing.companyOverview.financialHealth?.metrics && (
                     <div className="grid grid-cols-2 gap-4 mt-4">
                       {Object.entries(briefing.companyOverview.financialHealth.metrics).map(([key, value]) => (
                         <div key={key} className="bg-secondary/30 p-3 rounded-md">
@@ -384,45 +470,48 @@ const BriefingResult = () => {
               </Tabs>
             </Card>
             
-            {/* Key Contacts */}
             <Card className="bg-background overflow-hidden print:shadow-none">
               <div className="bg-primary/10 px-6 py-3 border-b">
                 <h2 className="font-medium text-primary">Key Contacts</h2>
               </div>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {briefing.keyContacts.map((contact) => (
-                    <div key={contact.id} className="flex items-start space-x-3 border p-3 rounded-md">
-                      {contact.photo ? (
-                        <img 
-                          src={contact.photo} 
-                          alt={contact.name} 
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-medium">
-                          {contact.name.charAt(0)}
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="font-medium">{contact.name}</h4>
-                        <p className="text-sm text-muted-foreground">{contact.title}</p>
-                        {contact.linkedin && (
-                          <a 
-                            href={contact.linkedin} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline mt-1 inline-block"
-                          >
-                            LinkedIn Profile
-                          </a>
+                {briefing.keyContacts && briefing.keyContacts.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {briefing.keyContacts.map((contact) => (
+                      <div key={contact.id} className="flex items-start space-x-3 border p-3 rounded-md">
+                        {contact.photo ? (
+                          <img 
+                            src={contact.photo} 
+                            alt={contact.name} 
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-medium">
+                            {contact.name.charAt(0)}
+                          </div>
                         )}
+                        <div>
+                          <h4 className="font-medium">{contact.name}</h4>
+                          <p className="text-sm text-muted-foreground">{contact.title}</p>
+                          {contact.linkedin && (
+                            <a 
+                              href={contact.linkedin} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline mt-1 inline-block"
+                            >
+                              LinkedIn Profile
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No key contacts available.</p>
+                )}
                 
-                {briefing.keyContacts.length > 0 && briefing.keyContacts[0].recentActivity && (
+                {briefing.keyContacts && briefing.keyContacts.length > 0 && briefing.keyContacts[0].recentActivity && (
                   <div className="mt-6">
                     <h3 className="text-sm font-medium mb-2">Recent Activity</h3>
                     <div className="border rounded-md p-4">
@@ -439,169 +528,5 @@ const BriefingResult = () => {
               </CardContent>
             </Card>
 
-            {/* Insights */}
-            {briefing.insights && briefing.insights.length > 0 && (
-              <Card className="bg-background overflow-hidden print:shadow-none">
-                <div className="bg-primary/10 px-6 py-3 border-b">
-                  <h2 className="font-medium text-primary">Business Insights</h2>
-                </div>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    {briefing.insights.map((insight, index) => (
-                      <div key={index} className={index > 0 ? "pt-4 border-t" : ""}>
-                        <h3 className="font-medium mb-1">{insight.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
-                        <ul className="space-y-2">
-                          {insight.items.map((item, itemIndex) => (
-                            <li key={itemIndex} className="flex items-start">
-                              <span className="inline-flex items-center justify-center bg-secondary text-primary rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
-                                •
-                              </span>
-                              <span className="text-sm">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {
 
-            {/* Sales Hypotheses */}
-            {briefing.salesHypotheses && briefing.salesHypotheses.length > 0 && (
-              <Card className="bg-background overflow-hidden print:shadow-none">
-                <div className="bg-primary/10 px-6 py-3 border-b">
-                  <h2 className="font-medium text-primary">Sales Hypotheses</h2>
-                </div>
-                <CardContent className="p-6">
-                  <ul className="space-y-3">
-                    {briefing.salesHypotheses.map((hypothesis, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="inline-flex items-center justify-center bg-primary/10 text-primary rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
-                          {index + 1}
-                        </span>
-                        <span>{hypothesis}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Competitor Analysis */}
-            {briefing.competitorAnalysis && (
-              <Card className="bg-background overflow-hidden print:shadow-none">
-                <div className="bg-primary/10 px-6 py-3 border-b">
-                  <h2 className="font-medium text-primary">Competitor Analysis</h2>
-                </div>
-                <CardContent className="p-6">
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Key Competitors</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-muted/50">
-                              <th className="text-left p-2 border">Competitor</th>
-                              <th className="text-left p-2 border">Strengths</th>
-                              <th className="text-left p-2 border">Weaknesses</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {briefing.competitorAnalysis.competitors.map((competitor, index) => (
-                              <tr key={index} className="border-b">
-                                <td className="p-2 border">{competitor.name}</td>
-                                <td className="p-2 border">{competitor.strength}</td>
-                                <td className="p-2 border">{competitor.weakness}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Competitive Position</h3>
-                      <p>{briefing.competitorAnalysis.comparison}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Talking Points */}
-            {briefing.talkingPoints && briefing.talkingPoints.length > 0 && (
-              <Card className="bg-background overflow-hidden print:shadow-none">
-                <div className="bg-primary/10 px-6 py-3 border-b">
-                  <h2 className="font-medium text-primary">Suggested Talking Points</h2>
-                </div>
-                <CardContent className="p-6">
-                  <ul className="space-y-3">
-                    {briefing.talkingPoints.map((point, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="inline-flex items-center justify-center bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded-full w-5 h-5 text-xs font-medium mr-2 mt-0.5 flex-shrink-0">
-                          Q
-                        </span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-          
-          {/* Sidebar */}
-          <div className="space-y-6 print:hidden">
-            {/* Action Buttons */}
-            <Card className="bg-background">
-              <CardContent className="p-4 space-y-2">
-                <Button className="w-full justify-start" variant="outline">
-                  <Calendar size={16} className="mr-2" />
-                  Schedule Meeting
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <Mail size={16} className="mr-2" />
-                  Email Briefing
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <BarChart4 size={16} className="mr-2" />
-                  Create Presentation
-                </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <FileText size={16} className="mr-2" />
-                  Export as Word Doc
-                </Button>
-              </CardContent>
-            </Card>
-            
-            {/* Notes */}
-            <Card className="bg-background">
-              <div className="px-4 py-3 border-b">
-                <h3 className="font-medium">Meeting Notes</h3>
-              </div>
-              <CardContent className="p-4">
-                <Textarea 
-                  placeholder="Add your personal notes here..." 
-                  className="min-h-[200px] mb-4"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-                <Button 
-                  onClick={handleSaveNotes} 
-                  className="w-full"
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Saving..." : "Save Notes"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
-
-export default BriefingResult;

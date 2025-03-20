@@ -33,6 +33,7 @@ const BriefingFormPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [formStep, setFormStep] = useState<FormStep>('company');
+  const [error, setError] = useState<string | null>(null);
 
   const handleCompanySelect = (company: Company) => {
     setSelectedCompany(company);
@@ -60,6 +61,7 @@ const BriefingFormPage = () => {
     }
 
     setIsGenerating(true);
+    setError(null);
     
     // Simulate progress updates
     const progressInterval = setInterval(() => {
@@ -86,7 +88,14 @@ const BriefingFormPage = () => {
         .select('id')
         .single();
         
-      if (requestError) throw requestError;
+      if (requestError) {
+        console.error('Error creating briefing request:', requestError);
+        throw new Error(`Failed to create briefing request: ${requestError.message}`);
+      }
+      
+      if (!requestData?.id) {
+        throw new Error('No request ID returned from database');
+      }
       
       // For now, still using mock service to generate the briefing
       const contacts = getContacts();
@@ -101,39 +110,69 @@ const BriefingFormPage = () => {
         focusAreas.length > 0 ? focusAreas : undefined
       );
       
-      // Save the generated briefing to Supabase
-      let briefingId = null;
-      if (requestData?.id) {
-        // Convert contacts to a compatible JSON format
-        const keyContactsJson = briefing.keyContacts.map(contact => ({
-          id: contact.id,
-          name: contact.name,
-          title: contact.title,
-          company: contact.company,
-          linkedin: contact.linkedin || null,
-          recentActivity: contact.recentActivity || null
-        }));
+      // Convert complex objects to proper JSON
+      const keyContactsJson = briefing.keyContacts.map(contact => ({
+        id: contact.id,
+        name: contact.name,
+        title: contact.title,
+        company: contact.company,
+        linkedin: contact.linkedin || null,
+        recentActivity: contact.recentActivity || null
+      }));
 
-        const { data: briefingData, error: briefingError } = await supabase
-          .from('briefings')
-          .insert({
-            request_id: requestData.id,
-            title: briefing.title,
-            summary: briefing.summary,
-            company_overview: briefing.companyOverview,
-            key_contacts: keyContactsJson,
-            insights: briefing.insights,
-            sales_hypotheses: briefing.salesHypotheses,
-            competitor_analysis: briefing.competitorAnalysis,
-            talking_points: briefing.talkingPoints,
-            status: 'completed'
-          })
-          .select('id')
-          .single();
+      const insightsJson = briefing.insights.map(insight => ({
+        title: insight.title,
+        description: insight.description,
+        items: insight.items
+      }));
+      
+      const companyOverviewJson = {
+        description: briefing.companyOverview.description,
+        recentNews: briefing.companyOverview.recentNews,
+        financialHealth: {
+          status: briefing.companyOverview.financialHealth.status,
+          details: briefing.companyOverview.financialHealth.details,
+          metrics: briefing.companyOverview.financialHealth.metrics || null
+        }
+      };
+      
+      const competitorAnalysisJson = briefing.competitorAnalysis ? {
+        competitors: briefing.competitorAnalysis.competitors,
+        comparison: briefing.competitorAnalysis.comparison
+      } : null;
+
+      // Save the generated briefing to Supabase
+      const { data: briefingData, error: briefingError } = await supabase
+        .from('briefings')
+        .insert({
+          request_id: requestData.id,
+          title: briefing.title,
+          summary: briefing.summary,
+          company_overview: companyOverviewJson,
+          key_contacts: keyContactsJson,
+          insights: insightsJson,
+          sales_hypotheses: briefing.salesHypotheses,
+          competitor_analysis: competitorAnalysisJson,
+          talking_points: briefing.talkingPoints,
+          status: 'completed'
+        })
+        .select('id')
+        .single();
           
-        if (briefingError) throw briefingError;
+      if (briefingError) {
+        console.error('Error saving briefing:', briefingError);
+        throw new Error(`Failed to save briefing: ${briefingError.message}`);
+      }
+      
+      // Update request status
+      const { error: updateError } = await supabase
+        .from('briefing_requests')
+        .update({ status: 'completed' })
+        .eq('id', requestData.id);
         
-        briefingId = briefingData?.id;
+      if (updateError) {
+        console.error('Error updating request status:', updateError);
+        // Non-fatal error, continue
       }
       
       clearInterval(progressInterval);
@@ -146,10 +185,11 @@ const BriefingFormPage = () => {
       
       // Wait a moment before redirecting to show 100% progress
       setTimeout(() => {
-        if (briefingId) {
-          navigate(`/briefing/${briefingId}`);
+        if (briefingData?.id) {
+          navigate(`/briefing/${briefingData.id}`);
         } else {
-          navigate('/dashboard');
+          setError("Briefing was created but ID was not returned. Please check your dashboard.");
+          setIsGenerating(false);
         }
       }, 500);
       
@@ -157,9 +197,11 @@ const BriefingFormPage = () => {
       clearInterval(progressInterval);
       console.error('Error generating briefing:', error);
       
+      setError("Failed to generate briefing. Please try again.");
+      
       toast({
         title: "Failed to generate briefing",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
       
@@ -206,6 +248,12 @@ const BriefingFormPage = () => {
                 <BriefingGenerationProgress progress={generationProgress} />
               ) : (
                 <form className="space-y-6">
+                  {error && (
+                    <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
+                      {error}
+                    </div>
+                  )}
+                  
                   <CompanySelectionStep 
                     onSelect={handleCompanySelect} 
                     selectedCompany={selectedCompany} 
