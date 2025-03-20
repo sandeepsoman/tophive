@@ -33,7 +33,7 @@ const Dashboard = () => {
   }, []);
 
   const handleNewBriefing = () => {
-    navigate('/new-briefing');
+    navigate('/briefing/new');
   };
 
   const handleViewBriefing = (id: string) => {
