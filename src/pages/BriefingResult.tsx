@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -44,6 +43,22 @@ const BriefingResult = () => {
         if (data) {
           console.log('Loaded briefing from Supabase:', data);
           
+          // Convert string arrays to actual arrays if needed
+          const parsedSummary = Array.isArray(data.summary) ? data.summary : [];
+          const parsedTalkingPoints = Array.isArray(data.talking_points) ? data.talking_points : [];
+          const parsedSalesHypotheses = Array.isArray(data.sales_hypotheses) ? data.sales_hypotheses : [];
+          
+          // Parse JSON fields with type checking
+          const companyOverview = typeof data.company_overview === 'object' ? data.company_overview : {
+            description: '', 
+            recentNews: [],
+            financialHealth: { status: '', details: '' }
+          };
+          
+          const keyContacts = Array.isArray(data.key_contacts) ? data.key_contacts : [];
+          const insights = Array.isArray(data.insights) ? data.insights : [];
+          const competitorAnalysis = typeof data.competitor_analysis === 'object' ? data.competitor_analysis : undefined;
+          
           // Map the Supabase briefing data to our Briefing interface
           const mappedBriefing: Briefing = {
             id: data.id,
@@ -54,17 +69,13 @@ const BriefingResult = () => {
               logo: data.briefing_requests?.company_logo || undefined,
             },
             meetingType: data.briefing_requests?.meeting_type as any,
-            summary: data.summary || [],
-            companyOverview: data.company_overview || { 
-              description: '', 
-              recentNews: [],
-              financialHealth: { status: '', details: '' }
-            },
-            keyContacts: data.key_contacts || [],
-            insights: data.insights || [],
-            salesHypotheses: data.sales_hypotheses || [],
-            competitorAnalysis: data.competitor_analysis || undefined,
-            talkingPoints: data.talking_points || [],
+            summary: parsedSummary,
+            companyOverview: companyOverview,
+            keyContacts: keyContacts,
+            insights: insights,
+            salesHypotheses: parsedSalesHypotheses,
+            competitorAnalysis: competitorAnalysis,
+            talkingPoints: parsedTalkingPoints,
             createdAt: new Date(data.created_at),
             status: data.status as any,
             notes: data.notes || '',
