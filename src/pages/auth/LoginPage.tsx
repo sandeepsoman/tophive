@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 
 const LoginPage = () => {
@@ -22,6 +22,7 @@ const LoginPage = () => {
     
     try {
       await signIn(email, password);
+      // Navigation is handled in the signIn function
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
