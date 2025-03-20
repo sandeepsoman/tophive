@@ -62,9 +62,9 @@ const Hero = () => {
                 <ChevronRight size={16} className="ml-1" />
               </Button>
             </Link>
-            <Link to="/demo">
+            <Link to="/login">
               <Button variant="outline" size="lg" className="rounded-full px-6 transition-all w-full sm:w-auto">
-                See Demo
+                Sign In
               </Button>
             </Link>
           </div>

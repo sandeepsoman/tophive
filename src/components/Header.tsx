@@ -68,7 +68,7 @@ const Header = () => {
         </nav>
         
         <div className="hidden md:flex items-center space-x-4">
-          <Link to="/signin">
+          <Link to="/login">
             <Button variant="ghost" size="sm" className="transition-all">
               Sign In
             </Button>
@@ -122,7 +122,7 @@ const Header = () => {
             </Link>
             <div className="flex flex-col space-y-2 pt-2 border-t border-border">
               <Link 
-                to="/signin" 
+                to="/login" 
                 className="w-full"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
