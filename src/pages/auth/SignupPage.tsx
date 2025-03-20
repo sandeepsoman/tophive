@@ -1,11 +1,12 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const SignupPage = () => {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ const SignupPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,18 +31,27 @@ const SignupPage = () => {
     setIsLoading(true);
     
     try {
-      // This is a placeholder - actual authentication would be implemented with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`
+        }
+      });
+      
+      if (error) throw error;
+      
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",
       });
       
-      // Redirect would happen here after successful signup
-    } catch (error) {
+      navigate('/login');
+    } catch (error: any) {
       console.error('Signup error:', error);
       toast({
         title: "Signup failed",
-        description: "There was a problem creating your account.",
+        description: error.message || "There was a problem creating your account.",
         variant: "destructive",
       });
     } finally {

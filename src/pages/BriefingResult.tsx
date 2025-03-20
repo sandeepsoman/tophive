@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -528,5 +529,164 @@ const BriefingResult = () => {
               </CardContent>
             </Card>
 
-            {
+            {briefing.insights && briefing.insights.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Key Insights</h2>
+                </div>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    {briefing.insights.map((insight, index) => (
+                      <div key={index} className="border-b pb-6 last:border-0 last:pb-0">
+                        <h3 className="font-medium mb-2 flex items-center">
+                          <span className="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm mr-2">
+                            <BarChart4 size={14} />
+                          </span>
+                          {insight.title}
+                        </h3>
+                        <p className="text-sm mb-4">{insight.description}</p>
+                        {insight.items && insight.items.length > 0 && (
+                          <ul className="space-y-1">
+                            {insight.items.map((item, idx) => (
+                              <li key={idx} className="text-sm pl-5 relative">
+                                <span className="absolute left-0 top-2 w-2 h-2 bg-primary/50 rounded-full"></span>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
+            {briefing.competitorAnalysis && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Competitor Analysis</h2>
+                </div>
+                <CardContent className="p-6">
+                  {briefing.competitorAnalysis.competitors && briefing.competitorAnalysis.competitors.length > 0 ? (
+                    <>
+                      <div className="grid gap-4 mb-6">
+                        {briefing.competitorAnalysis.competitors.map((competitor, index) => (
+                          <div key={index} className="border rounded-md p-4">
+                            <h3 className="font-medium mb-2">{competitor.name}</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Strengths</h4>
+                                <p className="text-sm">{competitor.strength}</p>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">Weaknesses</h4>
+                                <p className="text-sm">{competitor.weakness}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {briefing.competitorAnalysis.comparison && (
+                        <div>
+                          <h3 className="text-sm font-medium mb-2">Competitive Landscape</h3>
+                          <p className="text-sm">{briefing.competitorAnalysis.comparison}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">No competitor analysis available.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {briefing.talkingPoints && briefing.talkingPoints.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Talking Points</h2>
+                </div>
+                <CardContent className="p-6">
+                  <ul className="space-y-3">
+                    {briefing.talkingPoints.map((point, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="bg-primary/10 text-primary rounded p-1 mr-3 mt-0.5">
+                          <FileText size={14} />
+                        </span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {briefing.salesHypotheses && briefing.salesHypotheses.length > 0 && (
+              <Card className="bg-background overflow-hidden print:shadow-none">
+                <div className="bg-primary/10 px-6 py-3 border-b">
+                  <h2 className="font-medium text-primary">Sales Hypotheses</h2>
+                </div>
+                <CardContent className="p-6">
+                  <ul className="space-y-4">
+                    {briefing.salesHypotheses.map((hypothesis, index) => (
+                      <li key={index} className="pb-4 border-b last:pb-0 last:border-0">
+                        <Badge className="mb-2">Hypothesis {index + 1}</Badge>
+                        <p>{hypothesis}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <Card className="bg-background print:shadow-none sticky top-4">
+              <div className="bg-primary/10 px-6 py-3 border-b">
+                <h2 className="font-medium text-primary">Meeting Details</h2>
+              </div>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium">Meeting Type</h3>
+                      <p>{briefing.meetingType}</p>
+                    </div>
+                  </div>
+                  {briefing.company.location && (
+                    <div className="flex items-start space-x-3">
+                      <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <h3 className="text-sm font-medium">Company Location</h3>
+                        <p>{briefing.company.location}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-4 border-t">
+                    <h3 className="text-sm font-medium mb-2">Notes</h3>
+                    <Textarea
+                      placeholder="Add your meeting notes here..."
+                      className="min-h-[150px]"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                    <Button 
+                      onClick={handleSaveNotes} 
+                      className="mt-2 w-full"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "Saving..." : "Save Notes"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default BriefingResult;
