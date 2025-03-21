@@ -13,7 +13,6 @@ import { BriefingService, Briefing, Contact } from '@/utils/briefingService';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Download, Share2, ThumbsUp, ThumbsDown, Printer, Calendar, Mail, BarChart4, FileText } from 'lucide-react';
-import type { Json } from '@/integrations/supabase/types';
 
 function safeParseJson<T>(data: unknown, fallback: T): T {
   if (data === null || data === undefined) {
@@ -45,6 +44,7 @@ const BriefingResult = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    console.log('Loading briefing with ID:', id);
     const loadBriefing = async () => {
       if (!id) {
         setError("No briefing ID provided");
@@ -56,6 +56,7 @@ const BriefingResult = () => {
         setIsLoading(true);
         setError(null);
         
+        // Attempt to get data from Supabase
         const { data, error } = await supabase
           .from('briefings')
           .select('*, briefing_requests(*)')
@@ -70,6 +71,7 @@ const BriefingResult = () => {
         if (data) {
           console.log('Loaded briefing from Supabase:', data);
           
+          // Safely parse data with fallbacks for empty arrays
           const parsedSummary = Array.isArray(data.summary) ? data.summary : [];
           const parsedTalkingPoints = Array.isArray(data.talking_points) ? data.talking_points : [];
           const parsedSalesHypotheses = Array.isArray(data.sales_hypotheses) ? data.sales_hypotheses : [];
@@ -148,8 +150,8 @@ const BriefingResult = () => {
               id: data.briefing_requests?.company_id || '',
               name: data.briefing_requests?.company_name || '',
               logo: data.briefing_requests?.company_logo || undefined,
-              industry: 'Technology',
-              location: 'Unknown'
+              industry: 'Technology', // Default value if not available
+              location: 'Unknown' // Default value if not available
             },
             meetingType: (data.briefing_requests?.meeting_type as any) || 'Intro Call',
             summary: parsedSummary,
@@ -167,9 +169,10 @@ const BriefingResult = () => {
           setBriefing(mappedBriefing);
           setNotes(data.notes || '');
         } else {
-          console.log('Briefing not found in Supabase, using mock service');
+          console.log('Briefing not found in Supabase, trying mock service');
           try {
             const mockData = await BriefingService.getBriefingById(id);
+            console.log('Loaded briefing from mock service:', mockData);
             setBriefing(mockData);
             setNotes(mockData.notes || '');
           } catch (mockError) {
