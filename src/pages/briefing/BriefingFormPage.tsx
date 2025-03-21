@@ -72,6 +72,8 @@ const BriefingFormPage = () => {
     }, 800);
     
     try {
+      console.log('Creating briefing request with user ID:', user.id);
+      
       // Save briefing request to Supabase
       const { data: requestData, error: requestError } = await supabase
         .from('briefing_requests')
@@ -96,6 +98,8 @@ const BriefingFormPage = () => {
       if (!requestData?.id) {
         throw new Error('No request ID returned from database');
       }
+      
+      console.log('Briefing request created with ID:', requestData.id);
       
       // For now, still using mock service to generate the briefing
       const contacts = getContacts();
@@ -141,6 +145,8 @@ const BriefingFormPage = () => {
         comparison: briefing.competitorAnalysis.comparison
       } : null;
 
+      console.log('Inserting briefing with request ID:', requestData.id);
+      
       // Save the generated briefing to Supabase
       const { data: briefingData, error: briefingError } = await supabase
         .from('briefings')
@@ -186,6 +192,7 @@ const BriefingFormPage = () => {
       // Wait a moment before redirecting to show 100% progress
       setTimeout(() => {
         if (briefingData?.id) {
+          console.log('Redirecting to briefing page:', briefingData.id);
           navigate(`/briefing/${briefingData.id}`);
         } else {
           setError("Briefing was created but ID was not returned. Please check your dashboard.");
