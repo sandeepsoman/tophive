@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -147,58 +146,102 @@ const BriefingFormPage = () => {
 
       console.log('Inserting briefing with request ID:', requestData.id);
       
-      // Save the generated briefing to Supabase
-      const { data: briefingData, error: briefingError } = await supabase
-        .from('briefings')
-        .insert({
-          request_id: requestData.id,
-          title: briefing.title,
-          summary: briefing.summary,
-          company_overview: companyOverviewJson,
-          key_contacts: keyContactsJson,
-          insights: insightsJson,
-          sales_hypotheses: briefing.salesHypotheses,
-          competitor_analysis: competitorAnalysisJson,
-          talking_points: briefing.talkingPoints,
-          status: 'completed'
-        })
-        .select('id')
-        .single();
-          
-      if (briefingError) {
-        console.error('Error saving briefing:', briefingError);
-        throw new Error(`Failed to save briefing: ${briefingError.message}`);
-      }
+      // Debug the authentication before insertion
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Current session exists:', !!sessionData.session);
+      console.log('Current user ID:', sessionData.session?.user?.id);
       
-      // Update request status
-      const { error: updateError } = await supabase
-        .from('briefing_requests')
-        .update({ status: 'completed' })
-        .eq('id', requestData.id);
-        
-      if (updateError) {
-        console.error('Error updating request status:', updateError);
-        // Non-fatal error, continue
-      }
-      
-      clearInterval(progressInterval);
-      setGenerationProgress(100);
-      
-      toast({
-        title: "Briefing generated successfully",
-        description: "Your sales briefing is ready to view.",
-      });
-      
-      // Wait a moment before redirecting to show 100% progress
-      setTimeout(() => {
-        if (briefingData?.id) {
-          console.log('Redirecting to briefing page:', briefingData.id);
-          navigate(`/briefing/${briefingData.id}`);
-        } else {
-          setError("Briefing was created but ID was not returned. Please check your dashboard.");
-          setIsGenerating(false);
+      try {
+        // Save the generated briefing to Supabase
+        const { data: briefingData, error: briefingError } = await supabase
+          .from('briefings')
+          .insert({
+            request_id: requestData.id,
+            title: briefing.title,
+            summary: briefing.summary,
+            company_overview: companyOverviewJson,
+            key_contacts: keyContactsJson,
+            insights: insightsJson,
+            sales_hypotheses: briefing.salesHypotheses,
+            competitor_analysis: competitorAnalysisJson,
+            talking_points: briefing.talkingPoints,
+            status: 'completed'
+          })
+          .select('id')
+          .single();
+            
+        if (briefingError) {
+          console.error('Error saving briefing:', briefingError);
+          throw new Error(`Failed to save briefing: ${briefingError.message}`);
         }
-      }, 500);
+        
+        // Update request status
+        const { error: updateError } = await supabase
+          .from('briefing_requests')
+          .update({ status: 'completed' })
+          .eq('id', requestData.id);
+          
+        if (updateError) {
+          console.error('Error updating request status:', updateError);
+          // Non-fatal error, continue
+        }
+        
+        clearInterval(progressInterval);
+        setGenerationProgress(100);
+        
+        toast({
+          title: "Briefing generated successfully",
+          description: "Your sales briefing is ready to view.",
+        });
+        
+        // Wait a moment before redirecting to show 100% progress
+        setTimeout(() => {
+          if (briefingData?.id) {
+            console.log('Redirecting to briefing page:', briefingData.id);
+            navigate(`/briefing/${briefingData.id}`);
+          } else {
+            setError("Briefing was created but ID was not returned. Please check your dashboard.");
+            setIsGenerating(false);
+          }
+        }, 500);
+      } catch (briefingError: any) {
+        console.error('Error saving briefing details:', briefingError);
+        
+        // Fallback: Try to save briefing without explicitly requesting ID
+        const { error: fallbackError } = await supabase
+          .from('briefings')
+          .insert({
+            request_id: requestData.id,
+            title: briefing.title,
+            summary: briefing.summary,
+            company_overview: companyOverviewJson,
+            key_contacts: keyContactsJson,
+            insights: insightsJson,
+            sales_hypotheses: briefing.salesHypotheses,
+            competitor_analysis: competitorAnalysisJson,
+            talking_points: briefing.talkingPoints,
+            status: 'completed'
+          });
+        
+        if (fallbackError) {
+          console.error('Fallback briefing save also failed:', fallbackError);
+          throw new Error(`All attempts to save briefing failed: ${fallbackError.message}`);
+        }
+        
+        console.log('Briefing saved without ID return. Redirecting to dashboard');
+        clearInterval(progressInterval);
+        setGenerationProgress(100);
+        
+        toast({
+          title: "Briefing generated",
+          description: "Your briefing has been saved. Redirecting to dashboard.",
+        });
+        
+        // Redirect to dashboard since we don't have an ID
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 500);
+      }
       
     } catch (error) {
       clearInterval(progressInterval);
